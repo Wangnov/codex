@@ -36,6 +36,9 @@ sandbox_mode = "workspace-write"
 model_reasoning_summary = "detailed"
 model_reasoning_effort = "high"
 model_verbosity = "medium"
+reasoning_translation_model = "gpt-4o-mini"
+reasoning_translation_model_provider = "openai"
+reasoning_translation_target_language = "ja"
 profile = "test"
 forced_chatgpt_workspace_id = "12345678-0000-0000-0000-000000000000"
 forced_login_method = "chatgpt"
@@ -94,6 +97,9 @@ async fn get_config_toml_parses_all_fields() -> Result<()> {
             forced_chatgpt_workspace_id: Some("12345678-0000-0000-0000-000000000000".into()),
             forced_login_method: Some(ForcedLoginMethod::Chatgpt),
             model: Some("gpt-5.1-codex-max".into()),
+            reasoning_translation_model: Some("gpt-4o-mini".into()),
+            reasoning_translation_model_provider: Some("openai".into()),
+            reasoning_translation_target_language: Some("ja".into()),
             model_reasoning_effort: Some(ReasoningEffort::High),
             model_reasoning_summary: Some(ReasoningSummary::Detailed),
             model_verbosity: Some(Verbosity::Medium),
@@ -144,6 +150,9 @@ async fn get_config_toml_empty() -> Result<()> {
             forced_chatgpt_workspace_id: None,
             forced_login_method: None,
             model: None,
+            reasoning_translation_model: None,
+            reasoning_translation_model_provider: None,
+            reasoning_translation_target_language: None,
             model_reasoning_effort: None,
             model_reasoning_summary: None,
             model_verbosity: None,

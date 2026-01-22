@@ -23,6 +23,7 @@ use crate::features::Features;
 use crate::models_manager::manager::ModelsManager;
 use crate::parse_command::parse_command;
 use crate::parse_turn_item;
+use crate::reasoning_translation::should_translate_reasoning_summary;
 use crate::stream_events_utils::HandleOutputCtx;
 use crate::stream_events_utils::handle_non_tool_response_item;
 use crate::stream_events_utils::handle_output_item_done;
@@ -1163,7 +1164,19 @@ impl Session {
         self.send_event_raw(event).await;
 
         let show_raw_agent_reasoning = self.show_raw_agent_reasoning();
-        for legacy in legacy_source.as_legacy_events(show_raw_agent_reasoning) {
+        let current_model = turn_context.client.get_model();
+        let suppress_reasoning_summary_deltas =
+            matches!(legacy_source, EventMsg::ReasoningContentDelta(_))
+                && should_translate_reasoning_summary(
+                    turn_context.client.config().as_ref(),
+                    &current_model,
+                );
+        let legacy_events = if suppress_reasoning_summary_deltas {
+            Vec::new()
+        } else {
+            legacy_source.as_legacy_events(show_raw_agent_reasoning)
+        };
+        for legacy in legacy_events {
             let legacy_event = Event {
                 id: turn_context.sub_id.clone(),
                 msg: legacy,

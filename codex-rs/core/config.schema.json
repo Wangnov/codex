@@ -1404,6 +1404,18 @@
       },
       "type": "object"
     },
+    "reasoning_translation_model": {
+      "description": "Optional model slug used to translate reasoning summary output.",
+      "type": "string"
+    },
+    "reasoning_translation_model_provider": {
+      "description": "Optional model provider id used to translate reasoning summary output.",
+      "type": "string"
+    },
+    "reasoning_translation_target_language": {
+      "description": "Target language for translating reasoning summary output. Defaults to \"en\".",
+      "type": "string"
+    },
     "review_model": {
       "description": "Review model override used by the `/review` feature.",
       "type": "string"

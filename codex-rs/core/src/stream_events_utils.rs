@@ -1,15 +1,24 @@
 use std::pin::Pin;
 use std::sync::Arc;
 
+use codex_protocol::config_types::ReasoningSummary;
+use codex_protocol::config_types::WebSearchMode;
 use codex_protocol::items::TurnItem;
+use codex_protocol::protocol::EventMsg;
+use codex_protocol::user_input::UserInput;
 use tokio_util::sync::CancellationToken;
 
 use crate::codex::Session;
 use crate::codex::TurnContext;
+use crate::codex_delegate::run_codex_thread_one_shot;
 use crate::error::CodexErr;
 use crate::error::Result;
 use crate::function_tool::FunctionCallError;
 use crate::parse_turn_item;
+use crate::reasoning_translation::TranslationSettings;
+use crate::reasoning_translation::matches_target_language;
+use crate::reasoning_translation::translation_settings_for;
+use crate::reasoning_translation::translation_target_language;
 use crate::tools::parallel::ToolCallRuntime;
 use crate::tools::router::ToolRouter;
 use codex_protocol::models::FunctionCallOutputPayload;
@@ -69,7 +78,18 @@ pub(crate) async fn handle_output_item_done(
         }
         // No tool call: convert messages/reasoning into turn items and mark them as complete.
         Ok(None) => {
-            if let Some(turn_item) = handle_non_tool_response_item(&item).await {
+            if let Some(mut turn_item) = handle_non_tool_response_item(&item).await {
+                if let TurnItem::Reasoning(mut reasoning_item) = turn_item {
+                    let summary_text = std::mem::take(&mut reasoning_item.summary_text);
+                    if let Some(translated_summary_text) =
+                        maybe_translate_reasoning_summary(ctx, &summary_text).await
+                    {
+                        reasoning_item.summary_text = translated_summary_text;
+                    } else {
+                        reasoning_item.summary_text = summary_text;
+                    }
+                    turn_item = TurnItem::Reasoning(reasoning_item);
+                }
                 if previously_active_item.is_none() {
                     ctx.sess
                         .emit_turn_item_started(&ctx.turn_context, &turn_item)
@@ -163,6 +183,96 @@ pub(crate) async fn handle_non_tool_response_item(item: &ResponseItem) -> Option
         }
         _ => None,
     }
+}
+
+async fn maybe_translate_reasoning_summary(
+    ctx: &HandleOutputCtx,
+    summary_text: &[String],
+) -> Option<Vec<String>> {
+    if summary_text.is_empty() {
+        return None;
+    }
+    let joined = summary_text.join("\n\n");
+    let trimmed = joined.trim();
+    if trimmed.is_empty() {
+        return None;
+    }
+    let config = ctx.turn_context.client.config();
+    if config.hide_agent_reasoning {
+        return None;
+    }
+    let current_model = ctx.turn_context.client.get_model();
+    let translation_settings = translation_settings_for(config.as_ref(), &current_model)?;
+    let target_language = translation_target_language(config.as_ref());
+    if matches_target_language(trimmed, target_language) == Some(true) {
+        return None;
+    }
+
+    let translated =
+        translate_text_with_model(ctx, &translation_settings, target_language, trimmed).await?;
+    let translated = translated.trim();
+    if translated.is_empty() {
+        return None;
+    }
+    Some(vec![translated.to_string()])
+}
+
+async fn translate_text_with_model(
+    ctx: &HandleOutputCtx,
+    settings: &TranslationSettings,
+    target_language: &str,
+    text: &str,
+) -> Option<String> {
+    let config = ctx.turn_context.client.config();
+    let mut sub_agent_config = config.as_ref().clone();
+    sub_agent_config.model = Some(settings.model.clone());
+    sub_agent_config.model_provider_id = settings.provider_id.clone();
+    sub_agent_config.model_provider = settings.provider.clone();
+    sub_agent_config.review_model = None;
+    sub_agent_config.base_instructions = Some(translation_instructions(target_language));
+    sub_agent_config.developer_instructions = None;
+    sub_agent_config.user_instructions = None;
+    sub_agent_config.model_reasoning_summary = ReasoningSummary::None;
+    sub_agent_config.model_reasoning_effort = None;
+    sub_agent_config.hide_agent_reasoning = true;
+    sub_agent_config.show_raw_agent_reasoning = false;
+    sub_agent_config.web_search_mode = Some(WebSearchMode::Disabled);
+
+    let input = vec![UserInput::Text {
+        text: text.to_string(),
+        text_elements: Vec::new(),
+    }];
+    let io = run_codex_thread_one_shot(
+        sub_agent_config,
+        ctx.sess.services.auth_manager.clone(),
+        ctx.sess.services.models_manager.clone(),
+        input,
+        ctx.sess.clone(),
+        ctx.turn_context.clone(),
+        ctx.cancellation_token.child_token(),
+        None,
+    )
+    .await
+    .ok()?;
+
+    let mut last_message = None;
+    while let Ok(event) = io.next_event().await {
+        match event.msg {
+            EventMsg::AgentMessage(message) => {
+                last_message = Some(message.message);
+            }
+            EventMsg::TurnComplete(_) => break,
+            EventMsg::TurnAborted(_) | EventMsg::StreamError(_) => return None,
+            _ => {}
+        }
+    }
+    last_message
+}
+
+fn translation_instructions(target_language: &str) -> String {
+    format!(
+        "Translate the user's text into {target_language}. Preserve markdown and code formatting. Reply with only the translated text."
+    )
 }
 
 pub(crate) fn last_assistant_message_from_item(item: &ResponseItem) -> Option<String> {

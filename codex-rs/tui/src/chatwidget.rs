@@ -2687,7 +2687,12 @@ impl ChatWidget {
             | EventMsg::AgentReasoningRawContentDelta(AgentReasoningRawContentDeltaEvent {
                 delta,
             }) => self.on_agent_reasoning_delta(delta),
-            EventMsg::AgentReasoning(AgentReasoningEvent { .. }) => self.on_agent_reasoning_final(),
+            EventMsg::AgentReasoning(AgentReasoningEvent { text }) => {
+                if self.reasoning_buffer.is_empty() {
+                    self.on_agent_reasoning_delta(text);
+                }
+                self.on_agent_reasoning_final();
+            }
             EventMsg::AgentReasoningRawContent(AgentReasoningRawContentEvent { text }) => {
                 self.on_agent_reasoning_delta(text);
                 self.on_agent_reasoning_final();

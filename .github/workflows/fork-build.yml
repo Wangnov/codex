@@ -1,0 +1,69 @@
+name: fork-build
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - main
+
+jobs:
+  build:
+    name: Build - ${{ matrix.runner }} - ${{ matrix.target }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: 60
+    defaults:
+      run:
+        working-directory: codex-rs
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - runner: macos-latest
+            target: aarch64-apple-darwin
+          - runner: macos-15-intel
+            target: x86_64-apple-darwin
+          - runner: ubuntu-latest
+            target: x86_64-unknown-linux-gnu
+          - runner: ubuntu-24.04-arm
+            target: aarch64-unknown-linux-gnu
+          - runner: windows-latest
+            target: x86_64-pc-windows-msvc
+
+    steps:
+      - uses: actions/checkout@v6
+      - uses: dtolnay/rust-toolchain@1.92
+        with:
+          targets: ${{ matrix.target }}
+      - uses: Swatinem/rust-cache@v2
+        with:
+          workspaces: |
+            codex-rs -> target
+          key: fork-build-${{ matrix.runner }}-${{ matrix.target }}
+
+      - name: Cargo build (release)
+        shell: bash
+        run: |
+          if [[ "${{ contains(matrix.target, 'windows') }}" == 'true' ]]; then
+            cargo build --target ${{ matrix.target }} --release --bin codex --bin codex-responses-api-proxy --bin codex-windows-sandbox-setup --bin codex-command-runner
+          else
+            cargo build --target ${{ matrix.target }} --release --bin codex --bin codex-responses-api-proxy
+          fi
+
+      - if: ${{ !contains(matrix.target, 'windows') }}
+        name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-${{ matrix.target }}
+          path: |
+            codex-rs/target/${{ matrix.target }}/release/codex
+            codex-rs/target/${{ matrix.target }}/release/codex-responses-api-proxy
+
+      - if: ${{ contains(matrix.target, 'windows') }}
+        name: Upload artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: codex-${{ matrix.target }}
+          path: |
+            codex-rs/target/${{ matrix.target }}/release/codex.exe
+            codex-rs/target/${{ matrix.target }}/release/codex-responses-api-proxy.exe
+            codex-rs/target/${{ matrix.target }}/release/codex-windows-sandbox-setup.exe
+            codex-rs/target/${{ matrix.target }}/release/codex-command-runner.exe

@@ -18,6 +18,19 @@ Codex can run a notification hook when the agent finishes a turn. See the config
 
 - https://developers.openai.com/codex/config-reference
 
+## Reasoning translation
+
+Codex can translate reasoning summaries using a user-configured model:
+
+```toml
+reasoning_translation_model = "gpt-4o-mini"
+reasoning_translation_model_provider = "openai" # optional
+reasoning_translation_target_language = "en" # default
+```
+
+Translation uses local language detection; if it already matches the target, the original is shown.
+Failures fall back silently to the original text. Raw reasoning content is not translated.
+
 ## JSON Schema
 
 The generated JSON Schema for `config.toml` lives at `codex-rs/core/config.schema.json`.

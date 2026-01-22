@@ -45,6 +45,7 @@ mod model_provider_info;
 pub mod parse_command;
 pub mod path_utils;
 pub mod powershell;
+mod reasoning_translation;
 pub mod sandboxing;
 mod session_prefix;
 mod stream_events_utils;

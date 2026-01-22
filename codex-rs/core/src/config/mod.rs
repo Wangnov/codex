@@ -156,6 +156,15 @@ pub struct Config {
     /// Defaults to `false`.
     pub show_raw_agent_reasoning: bool,
 
+    /// Optional model slug used to translate reasoning summary output.
+    pub reasoning_translation_model: Option<String>,
+
+    /// Optional model provider id used to translate reasoning summary output.
+    pub reasoning_translation_model_provider: Option<String>,
+
+    /// Target language for translating reasoning summary output.
+    pub reasoning_translation_target_language: String,
+
     /// User-provided instructions from AGENTS.md.
     pub user_instructions: Option<String>,
 
@@ -856,6 +865,15 @@ pub struct ConfigToml {
     /// Defaults to `false`.
     pub show_raw_agent_reasoning: Option<bool>,
 
+    /// Optional model slug used to translate reasoning summary output.
+    pub reasoning_translation_model: Option<String>,
+
+    /// Optional model provider id used to translate reasoning summary output.
+    pub reasoning_translation_model_provider: Option<String>,
+
+    /// Target language for translating reasoning summary output. Defaults to "en".
+    pub reasoning_translation_target_language: Option<String>,
+
     pub model_reasoning_effort: Option<ReasoningEffort>,
     pub model_reasoning_summary: Option<ReasoningSummary>,
     /// Optional verbosity control for GPT-5 models (Responses API `text.verbosity`).
@@ -954,6 +972,10 @@ impl From<ConfigToml> for UserSavedConfig {
             forced_chatgpt_workspace_id: config_toml.forced_chatgpt_workspace_id,
             forced_login_method: config_toml.forced_login_method,
             model: config_toml.model,
+            reasoning_translation_model: config_toml.reasoning_translation_model,
+            reasoning_translation_model_provider: config_toml.reasoning_translation_model_provider,
+            reasoning_translation_target_language: config_toml
+                .reasoning_translation_target_language,
             model_reasoning_effort: config_toml.model_reasoning_effort,
             model_reasoning_summary: config_toml.model_reasoning_summary,
             model_verbosity: config_toml.model_verbosity,
@@ -1446,6 +1468,35 @@ impl Config {
 
         let review_model = override_review_model.or(cfg.review_model);
 
+        let reasoning_translation_model = cfg.reasoning_translation_model.and_then(|value| {
+            let trimmed = value.trim();
+            if trimmed.is_empty() {
+                None
+            } else {
+                Some(trimmed.to_string())
+            }
+        });
+        let reasoning_translation_model_provider =
+            cfg.reasoning_translation_model_provider.and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            });
+        let reasoning_translation_target_language = cfg
+            .reasoning_translation_target_language
+            .and_then(|value| {
+                let trimmed = value.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            })
+            .unwrap_or_else(|| "en".to_string());
+
         let check_for_update_on_startup = cfg.check_for_update_on_startup.unwrap_or(true);
 
         // Ensure that every field of ConfigRequirements is applied to the final
@@ -1521,6 +1572,9 @@ impl Config {
                 .show_raw_agent_reasoning
                 .or(show_raw_agent_reasoning)
                 .unwrap_or(false),
+            reasoning_translation_model,
+            reasoning_translation_model_provider,
+            reasoning_translation_target_language,
             model_reasoning_effort: config_profile
                 .model_reasoning_effort
                 .or(cfg.model_reasoning_effort),
@@ -3678,6 +3732,9 @@ model_verbosity = "high"
                 codex_linux_sandbox_exe: None,
                 hide_agent_reasoning: false,
                 show_raw_agent_reasoning: false,
+                reasoning_translation_model: None,
+                reasoning_translation_model_provider: None,
+                reasoning_translation_target_language: "en".to_string(),
                 model_reasoning_effort: Some(ReasoningEffort::High),
                 model_reasoning_summary: ReasoningSummary::Detailed,
                 model_supports_reasoning_summaries: None,
@@ -3759,6 +3816,9 @@ model_verbosity = "high"
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             show_raw_agent_reasoning: false,
+            reasoning_translation_model: None,
+            reasoning_translation_model_provider: None,
+            reasoning_translation_target_language: "en".to_string(),
             model_reasoning_effort: None,
             model_reasoning_summary: ReasoningSummary::default(),
             model_supports_reasoning_summaries: None,
@@ -3855,6 +3915,9 @@ model_verbosity = "high"
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             show_raw_agent_reasoning: false,
+            reasoning_translation_model: None,
+            reasoning_translation_model_provider: None,
+            reasoning_translation_target_language: "en".to_string(),
             model_reasoning_effort: None,
             model_reasoning_summary: ReasoningSummary::default(),
             model_supports_reasoning_summaries: None,
@@ -3937,6 +4000,9 @@ model_verbosity = "high"
             codex_linux_sandbox_exe: None,
             hide_agent_reasoning: false,
             show_raw_agent_reasoning: false,
+            reasoning_translation_model: None,
+            reasoning_translation_model_provider: None,
+            reasoning_translation_target_language: "en".to_string(),
             model_reasoning_effort: Some(ReasoningEffort::High),
             model_reasoning_summary: ReasoningSummary::Detailed,
             model_supports_reasoning_summaries: None,
