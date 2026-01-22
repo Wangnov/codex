@@ -88,13 +88,13 @@ fn normalize_target_language(target_language: &str) -> Option<Lang> {
         "el" => Some(Lang::Ell),
         "he" => Some(Lang::Heb),
         "id" => Some(Lang::Ind),
-        "vi" => Some(Lang::Vie),
-        "th" => Some(Lang::Tha),
+        "vi" => Some(Lang::Vie), // codespell:ignore Vie
+        "th" => Some(Lang::Tha), // codespell:ignore Tha
         "fa" => Some(Lang::Pes),
         "ur" => Some(Lang::Urd),
         "bn" => Some(Lang::Ben),
         "ta" => Some(Lang::Tam),
-        "te" => Some(Lang::Tel),
+        "te" => Some(Lang::Tel), // codespell:ignore te
         "mr" => Some(Lang::Mar),
         "gu" => Some(Lang::Guj),
         "kn" => Some(Lang::Kan),
