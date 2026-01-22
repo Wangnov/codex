@@ -39,31 +39,23 @@ jobs:
             codex-rs -> target
           key: fork-build-${{ matrix.runner }}-${{ matrix.target }}
 
-      - name: Cargo build (release)
+      - name: Cargo build (release, TUI only)
         shell: bash
         run: |
-          if [[ "${{ contains(matrix.target, 'windows') }}" == 'true' ]]; then
-            cargo build --target ${{ matrix.target }} --release --bin codex --bin codex-responses-api-proxy --bin codex-windows-sandbox-setup --bin codex-command-runner
-          else
-            cargo build --target ${{ matrix.target }} --release --bin codex --bin codex-responses-api-proxy
-          fi
+          cargo build --target ${{ matrix.target }} --release -p codex-tui --bin codex-tui
 
       - if: ${{ !contains(matrix.target, 'windows') }}
         name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: codex-${{ matrix.target }}
+          name: codex-tui-${{ matrix.target }}
           path: |
-            codex-rs/target/${{ matrix.target }}/release/codex
-            codex-rs/target/${{ matrix.target }}/release/codex-responses-api-proxy
+            codex-rs/target/${{ matrix.target }}/release/codex-tui
 
       - if: ${{ contains(matrix.target, 'windows') }}
         name: Upload artifacts
         uses: actions/upload-artifact@v4
         with:
-          name: codex-${{ matrix.target }}
+          name: codex-tui-${{ matrix.target }}
           path: |
-            codex-rs/target/${{ matrix.target }}/release/codex.exe
-            codex-rs/target/${{ matrix.target }}/release/codex-responses-api-proxy.exe
-            codex-rs/target/${{ matrix.target }}/release/codex-windows-sandbox-setup.exe
-            codex-rs/target/${{ matrix.target }}/release/codex-command-runner.exe
+            codex-rs/target/${{ matrix.target }}/release/codex-tui.exe
