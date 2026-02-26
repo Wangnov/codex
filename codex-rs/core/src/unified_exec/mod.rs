@@ -93,6 +93,8 @@ pub(crate) struct ExecCommandRequest {
     pub additional_permissions: Option<PermissionProfile>,
     pub justification: Option<String>,
     pub prefix_rule: Option<Vec<String>>,
+    pub what: Option<String>,
+    pub why: Option<String>,
 }
 
 #[derive(Debug)]
@@ -234,6 +236,8 @@ mod tests {
                     additional_permissions: None,
                     justification: None,
                     prefix_rule: None,
+                    what: Some("run test command".to_string()),
+                    why: Some("verify unified exec behavior".to_string()),
                 },
                 &context,
             )

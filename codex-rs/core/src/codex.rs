@@ -9590,6 +9590,8 @@ mod tests {
                 payload: ToolPayload::Function {
                     arguments: serde_json::json!({
                         "command": params.command.clone(),
+                        "what": "print greeting text",
+                        "why": "verify escalation rejection behavior",
                         "workdir": Some(turn_context.cwd.to_string_lossy().to_string()),
                         "timeout_ms": params.expiration.timeout_ms(),
                         "sandbox_permissions": params.sandbox_permissions,
@@ -9629,6 +9631,8 @@ mod tests {
                 payload: ToolPayload::Function {
                     arguments: serde_json::json!({
                         "command": params2.command.clone(),
+                        "what": "print greeting text",
+                        "why": "verify non-escalated retry behavior",
                         "workdir": Some(turn_context.cwd.to_string_lossy().to_string()),
                         "timeout_ms": params2.expiration.timeout_ms(),
                         "sandbox_permissions": params2.sandbox_permissions,
@@ -9690,6 +9694,8 @@ mod tests {
                 payload: ToolPayload::Function {
                     arguments: serde_json::json!({
                         "cmd": "echo hi",
+                        "what": "print greeting text",
+                        "why": "verify escalation rejection behavior",
                         "sandbox_permissions": SandboxPermissions::RequireEscalated,
                         "justification": "need unsandboxed execution",
                     })

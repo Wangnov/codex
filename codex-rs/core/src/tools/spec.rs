@@ -305,6 +305,22 @@ fn create_exec_command_tool(allow_login_shell: bool, request_permission_enabled:
             },
         ),
         (
+            "what".to_string(),
+            JsonSchema::String {
+                description: Some(
+                    "A short action summary of what this command is doing.".to_string(),
+                ),
+            },
+        ),
+        (
+            "why".to_string(),
+            JsonSchema::String {
+                description: Some(
+                    "A short reason explaining why this command should be run.".to_string(),
+                ),
+            },
+        ),
+        (
             "workdir".to_string(),
             JsonSchema::String {
                 description: Some(
@@ -366,7 +382,11 @@ fn create_exec_command_tool(allow_login_shell: bool, request_permission_enabled:
         strict: false,
         parameters: JsonSchema::Object {
             properties,
-            required: Some(vec!["cmd".to_string()]),
+            required: Some(vec![
+                "cmd".to_string(),
+                "what".to_string(),
+                "why".to_string(),
+            ]),
             additional_properties: Some(false.into()),
         },
     })
@@ -429,6 +449,22 @@ fn create_shell_tool(request_permission_enabled: bool) -> ToolSpec {
             },
         ),
         (
+            "what".to_string(),
+            JsonSchema::String {
+                description: Some(
+                    "A short action summary of what this command is doing.".to_string(),
+                ),
+            },
+        ),
+        (
+            "why".to_string(),
+            JsonSchema::String {
+                description: Some(
+                    "A short reason explaining why this command should be run.".to_string(),
+                ),
+            },
+        ),
+        (
             "workdir".to_string(),
             JsonSchema::String {
                 description: Some("The working directory to execute the command in".to_string()),
@@ -466,7 +502,11 @@ Examples of valid command strings:
         strict: false,
         parameters: JsonSchema::Object {
             properties,
-            required: Some(vec!["command".to_string()]),
+            required: Some(vec![
+                "command".to_string(),
+                "what".to_string(),
+                "why".to_string(),
+            ]),
             additional_properties: Some(false.into()),
         },
     })
@@ -482,6 +522,22 @@ fn create_shell_command_tool(
             JsonSchema::String {
                 description: Some(
                     "The shell script to execute in the user's default shell".to_string(),
+                ),
+            },
+        ),
+        (
+            "what".to_string(),
+            JsonSchema::String {
+                description: Some(
+                    "A short action summary of what this command is doing.".to_string(),
+                ),
+            },
+        ),
+        (
+            "why".to_string(),
+            JsonSchema::String {
+                description: Some(
+                    "A short reason explaining why this command should be run.".to_string(),
                 ),
             },
         ),
@@ -533,7 +589,11 @@ Examples of valid command strings:
         strict: false,
         parameters: JsonSchema::Object {
             properties,
-            required: Some(vec!["command".to_string()]),
+            required: Some(vec![
+                "command".to_string(),
+                "what".to_string(),
+                "why".to_string(),
+            ]),
             additional_properties: Some(false.into()),
         },
     })
@@ -3081,6 +3141,27 @@ mod tests {
     }
 
     #[test]
+    fn test_exec_command_tool_requires_what_why() {
+        let tool = super::create_exec_command_tool(true, false);
+        let ToolSpec::Function(ResponsesApiTool {
+            parameters:
+                JsonSchema::Object {
+                    required: Some(required),
+                    ..
+                },
+            ..
+        }) = &tool
+        else {
+            panic!("expected function tool");
+        };
+
+        assert_eq!(
+            required,
+            &vec!["cmd".to_string(), "what".to_string(), "why".to_string()]
+        );
+    }
+
+    #[test]
     fn test_shell_tool() {
         let tool = super::create_shell_tool(false);
         let ToolSpec::Function(ResponsesApiTool {
@@ -3108,6 +3189,22 @@ Examples of valid command strings:
 - Always set the `workdir` param when using the shell function. Do not use `cd` unless absolutely necessary."#
         }.to_string();
         assert_eq!(description, &expected);
+
+        let ToolSpec::Function(ResponsesApiTool {
+            parameters:
+                JsonSchema::Object {
+                    required: Some(required),
+                    ..
+                },
+            ..
+        }) = &tool
+        else {
+            panic!("expected function tool");
+        };
+        assert_eq!(
+            required,
+            &vec!["command".to_string(), "what".to_string(), "why".to_string()]
+        );
     }
 
     #[test]
@@ -3158,6 +3255,22 @@ Examples of valid command strings:
 - Always set the `workdir` param when using the shell_command function. Do not use `cd` unless absolutely necessary."#.to_string()
         };
         assert_eq!(description, &expected);
+
+        let ToolSpec::Function(ResponsesApiTool {
+            parameters:
+                JsonSchema::Object {
+                    required: Some(required),
+                    ..
+                },
+            ..
+        }) = &tool
+        else {
+            panic!("expected function tool");
+        };
+        assert_eq!(
+            required,
+            &vec!["command".to_string(), "what".to_string(), "why".to_string()]
+        );
     }
 
     #[test]

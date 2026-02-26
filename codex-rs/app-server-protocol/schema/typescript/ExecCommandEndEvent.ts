@@ -35,6 +35,14 @@ source: ExecCommandSource,
  */
 interaction_input?: string, 
 /**
+ * High-level summary of what the command was doing.
+ */
+what?: string, 
+/**
+ * High-level reason for why the command ran.
+ */
+why?: string, 
+/**
  * Captured stdout
  */
 stdout: string, 

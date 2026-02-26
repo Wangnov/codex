@@ -871,6 +871,8 @@ fn exec_command_end_success_produces_completed_command_item() {
             parsed_cmd: parsed_cmd.clone(),
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
         }),
     );
     let out_begin = ep.collect_thread_events(&begin);
@@ -901,6 +903,8 @@ fn exec_command_end_success_produces_completed_command_item() {
             parsed_cmd,
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
             stdout: String::new(),
             stderr: String::new(),
             aggregated_output: "hi\n".to_string(),
@@ -949,6 +953,8 @@ fn command_execution_output_delta_updates_item_progress() {
             parsed_cmd: parsed_cmd.clone(),
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
         }),
     );
     let out_begin = ep.collect_thread_events(&begin);
@@ -989,6 +995,8 @@ fn command_execution_output_delta_updates_item_progress() {
             parsed_cmd,
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
             stdout: String::new(),
             stderr: String::new(),
             aggregated_output: String::new(),
@@ -1034,6 +1042,8 @@ fn exec_command_end_failure_produces_failed_command_item() {
             parsed_cmd: parsed_cmd.clone(),
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
         }),
     );
     assert_eq!(
@@ -1063,6 +1073,8 @@ fn exec_command_end_failure_produces_failed_command_item() {
             parsed_cmd,
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
             stdout: String::new(),
             stderr: String::new(),
             aggregated_output: String::new(),
@@ -1105,6 +1117,8 @@ fn exec_command_end_without_begin_is_ignored() {
             parsed_cmd: Vec::new(),
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
             stdout: String::new(),
             stderr: String::new(),
             aggregated_output: String::new(),
