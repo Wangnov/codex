@@ -171,3 +171,38 @@ These guidelines apply to app-server protocol work in `codex-rs`, especially:
 - Validate with `cargo test -p codex-app-server-protocol`.
 - Avoid boilerplate tests that only assert experimental field markers for individual
   request fields in `common.rs`; rely on schema generation/tests and behavioral coverage instead.
+
+## 私有补丁分支使用说明（WHAT/WHY）
+
+### 目标
+- 本仓库维护一个私有补丁分支：`local-main`
+- 主要补丁：给 exec 相关调用增加 `what` / `why` 必填约束，并在事件与 TUI 中透传/展示
+- 关键补丁提交：`bbe5a6333`
+
+### 日常同步上游（推荐流程）
+1. `git checkout local-main`
+2. `git fetch origin`
+3. `git rebase origin/main`
+
+说明：
+- 已开启 `pull.rebase=true`、`rebase.autoStash=true`、`rerere.enabled=true`
+- 遇到重复冲突时，`rerere` 会自动复用你之前的冲突解决结果
+
+### 快速验证（补丁相关）
+建议至少运行以下两条：
+1. `cargo test -p codex-core rejects_escalated_permissions_when_policy_not_on_request -- --nocapture`
+2. `cargo test -p codex-core test_exec_command_rejects_blank_what_and_why -- --nocapture`
+
+### 当 rebase 冲突过大时（重放补丁）
+#### 方法 A：按提交重放（首选）
+1. `git checkout -b local-main-rebuild origin/main`
+2. `git cherry-pick bbe5a6333`
+
+#### 方法 B：导出 patch 再应用
+1. `git format-patch -1 bbe5a6333 --stdout > /tmp/codex-what-why.patch`
+2. `git checkout -b local-main-rebuild origin/main`
+3. `git am /tmp/codex-what-why.patch`
+
+### 提交习惯建议
+- 私有补丁尽量保持少量、语义清晰的提交（便于 cherry-pick 与回滚）
+- 每次同步上游后，优先先跑“快速验证”再继续开发
