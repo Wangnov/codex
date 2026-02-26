@@ -3241,6 +3241,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3268,6 +3270,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3285,6 +3289,8 @@ mod tests {
                 }],
                 ExecCommandSource::Agent,
                 None,
+                None,
+                None,
             )
             .unwrap();
         cell.complete_call("c2", CommandOutput::default(), Duration::from_millis(1));
@@ -3299,6 +3305,8 @@ mod tests {
                     path: "status_indicator_widget.rs".into(),
                 }],
                 ExecCommandSource::Agent,
+                None,
+                None,
                 None,
             )
             .unwrap();
@@ -3337,6 +3345,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3361,6 +3371,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3387,6 +3399,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3411,6 +3425,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3434,6 +3450,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3458,6 +3476,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3482,6 +3502,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );
@@ -3532,6 +3554,8 @@ mod tests {
                 start_time: Some(Instant::now()),
                 duration: None,
                 interaction_input: None,
+                what: None,
+                why: None,
             },
             true,
         );

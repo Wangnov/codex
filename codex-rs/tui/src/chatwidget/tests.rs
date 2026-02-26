@@ -2980,6 +2980,8 @@ fn begin_exec_with_source(
         parsed_cmd,
         source,
         interaction_input,
+        what: None,
+        why: None,
     };
     chat.handle_codex_event(Event {
         id: call_id.to_string(),
@@ -3005,6 +3007,8 @@ fn begin_unified_exec_startup(
         parsed_cmd: Vec::new(),
         source: ExecCommandSource::UnifiedExecStartup,
         interaction_input: None,
+        what: None,
+        why: None,
     };
     chat.handle_codex_event(Event {
         id: call_id.to_string(),
@@ -3071,6 +3075,8 @@ fn end_exec(
         source,
         interaction_input,
         process_id,
+        what,
+        why,
     } = begin_event;
     chat.handle_codex_event(Event {
         id: call_id.clone(),
@@ -3083,6 +3089,8 @@ fn end_exec(
             parsed_cmd,
             source,
             interaction_input,
+            what,
+            why,
             stdout: stdout.to_string(),
             stderr: stderr.to_string(),
             aggregated_output: aggregated.clone(),
@@ -3722,6 +3730,8 @@ async fn exec_end_without_begin_uses_event_command() {
             parsed_cmd,
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
             stdout: "done".to_string(),
             stderr: String::new(),
             aggregated_output: "done".to_string(),
@@ -8459,6 +8469,8 @@ async fn chatwidget_exec_and_status_layout_vt100_snapshot() {
             parsed_cmd: parsed_cmd.clone(),
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
         }),
     });
     chat.handle_codex_event(Event {
@@ -8472,6 +8484,8 @@ async fn chatwidget_exec_and_status_layout_vt100_snapshot() {
             parsed_cmd,
             source: ExecCommandSource::Agent,
             interaction_input: None,
+            what: None,
+            why: None,
             stdout: String::new(),
             stderr: String::new(),
             aggregated_output: String::new(),

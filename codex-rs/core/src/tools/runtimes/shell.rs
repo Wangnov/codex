@@ -48,6 +48,8 @@ pub struct ShellRequest {
     pub sandbox_permissions: SandboxPermissions,
     pub additional_permissions: Option<PermissionProfile>,
     pub justification: Option<String>,
+    pub what: Option<String>,
+    pub why: Option<String>,
     pub exec_approval_requirement: ExecApprovalRequirement,
 }
 
@@ -144,7 +146,11 @@ impl Approvable<ShellRequest> for ShellRuntime {
         let reason = ctx
             .retry_reason
             .clone()
-            .or_else(|| req.justification.clone());
+            .or_else(|| req.justification.clone())
+            .or_else(|| match (&req.what, &req.why) {
+                (Some(what), Some(why)) => Some(format!("WHAT: {what}\nWHY: {why}")),
+                _ => None,
+            });
         let session = ctx.session;
         let turn = ctx.turn;
         let call_id = ctx.call_id.to_string();

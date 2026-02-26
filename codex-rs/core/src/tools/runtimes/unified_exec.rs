@@ -49,6 +49,8 @@ pub struct UnifiedExecRequest {
     pub sandbox_permissions: SandboxPermissions,
     pub additional_permissions: Option<PermissionProfile>,
     pub justification: Option<String>,
+    pub what: Option<String>,
+    pub why: Option<String>,
     pub exec_approval_requirement: ExecApprovalRequirement,
 }
 
@@ -108,7 +110,11 @@ impl Approvable<UnifiedExecRequest> for UnifiedExecRuntime<'_> {
         let reason = ctx
             .retry_reason
             .clone()
-            .or_else(|| req.justification.clone());
+            .or_else(|| req.justification.clone())
+            .or_else(|| match (&req.what, &req.why) {
+                (Some(what), Some(why)) => Some(format!("WHAT: {what}\nWHY: {why}")),
+                _ => None,
+            });
         Box::pin(async move {
             with_cached_approval(&session.services, "unified_exec", keys, || async move {
                 let available_decisions = None;

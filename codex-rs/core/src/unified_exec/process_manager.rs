@@ -189,6 +189,8 @@ impl UnifiedExecProcessManager {
             cwd.clone(),
             ExecCommandSource::UnifiedExecStartup,
             Some(request.process_id.clone()),
+            request.what.clone(),
+            request.why.clone(),
         );
         emitter.emit(event_ctx, ToolEventStage::Begin).await;
 
@@ -242,6 +244,8 @@ impl UnifiedExecProcessManager {
                 output.clone(),
                 exit,
                 wall_time,
+                request.what.clone(),
+                request.why.clone(),
             )
             .await;
 
@@ -270,6 +274,8 @@ impl UnifiedExecProcessManager {
                 request.tty,
                 network_approval_id,
                 Arc::clone(&transcript),
+                request.what.clone(),
+                request.why.clone(),
             )
             .await;
         };
@@ -477,6 +483,8 @@ impl UnifiedExecProcessManager {
         tty: bool,
         network_approval_id: Option<String>,
         transcript: Arc<tokio::sync::Mutex<HeadTailBuffer>>,
+        what: Option<String>,
+        why: Option<String>,
     ) {
         let entry = ProcessEntry {
             process: Arc::clone(&process),
@@ -521,6 +529,8 @@ impl UnifiedExecProcessManager {
             process_id.clone(),
             transcript,
             started_at,
+            what,
+            why,
         );
     }
 
@@ -592,6 +602,8 @@ impl UnifiedExecProcessManager {
             sandbox_permissions: request.sandbox_permissions,
             additional_permissions: request.additional_permissions.clone(),
             justification: request.justification.clone(),
+            what: request.what.clone(),
+            why: request.why.clone(),
             exec_approval_requirement,
         };
         let tool_ctx = ToolCtx {

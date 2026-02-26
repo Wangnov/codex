@@ -50,12 +50,33 @@ struct RunExecLikeArgs {
     exec_params: ExecParams,
     additional_permissions: Option<PermissionProfile>,
     prefix_rule: Option<Vec<String>>,
+    what: Option<String>,
+    why: Option<String>,
     session: Arc<crate::codex::Session>,
     turn: Arc<TurnContext>,
     tracker: crate::tools::context::SharedTurnDiffTracker,
     call_id: String,
     freeform: bool,
     shell_runtime_backend: ShellRuntimeBackend,
+}
+
+fn has_non_empty_command_purpose(what: Option<&str>, why: Option<&str>) -> bool {
+    what.is_some_and(|value| !value.trim().is_empty())
+        && why.is_some_and(|value| !value.trim().is_empty())
+}
+
+fn validate_command_purpose(
+    tool_name: &str,
+    what: Option<&str>,
+    why: Option<&str>,
+) -> Result<(), FunctionCallError> {
+    if has_non_empty_command_purpose(what, why) {
+        Ok(())
+    } else {
+        Err(FunctionCallError::RespondToModel(format!(
+            "`{tool_name}` requires non-empty `what` and `why` arguments."
+        )))
+    }
 }
 
 impl ShellHandler {
@@ -155,7 +176,15 @@ impl ToolHandler for ShellHandler {
         match &invocation.payload {
             ToolPayload::Function { arguments } => {
                 serde_json::from_str::<ShellToolCallParams>(arguments)
-                    .map(|params| !is_known_safe_command(&params.command))
+                    .map(|params| {
+                        if !has_non_empty_command_purpose(
+                            params.what.as_deref(),
+                            params.why.as_deref(),
+                        ) {
+                            return true;
+                        }
+                        !is_known_safe_command(&params.command)
+                    })
                     .unwrap_or(true)
             }
             ToolPayload::LocalShell { params } => !is_known_safe_command(&params.command),
@@ -177,6 +206,11 @@ impl ToolHandler for ShellHandler {
         match payload {
             ToolPayload::Function { arguments } => {
                 let params: ShellToolCallParams = parse_arguments(&arguments)?;
+                validate_command_purpose(
+                    tool_name.as_str(),
+                    params.what.as_deref(),
+                    params.why.as_deref(),
+                )?;
                 let prefix_rule = params.prefix_rule.clone();
                 let exec_params =
                     Self::to_exec_params(&params, turn.as_ref(), session.conversation_id);
@@ -185,6 +219,8 @@ impl ToolHandler for ShellHandler {
                     exec_params,
                     additional_permissions: params.additional_permissions.clone(),
                     prefix_rule,
+                    what: params.what.clone(),
+                    why: params.why.clone(),
                     session,
                     turn,
                     tracker,
@@ -202,6 +238,8 @@ impl ToolHandler for ShellHandler {
                     exec_params,
                     additional_permissions: None,
                     prefix_rule: None,
+                    what: None,
+                    why: None,
                     session,
                     turn,
                     tracker,
@@ -235,6 +273,9 @@ impl ToolHandler for ShellCommandHandler {
 
         serde_json::from_str::<ShellCommandToolCallParams>(arguments)
             .map(|params| {
+                if !has_non_empty_command_purpose(params.what.as_deref(), params.why.as_deref()) {
+                    return true;
+                }
                 let use_login_shell = match Self::resolve_use_login_shell(
                     params.login,
                     invocation.turn.tools_config.allow_login_shell,
@@ -267,6 +308,11 @@ impl ToolHandler for ShellCommandHandler {
         };
 
         let params: ShellCommandToolCallParams = parse_arguments(&arguments)?;
+        validate_command_purpose(
+            tool_name.as_str(),
+            params.what.as_deref(),
+            params.why.as_deref(),
+        )?;
         maybe_emit_implicit_skill_invocation(
             session.as_ref(),
             turn.as_ref(),
@@ -287,6 +333,8 @@ impl ToolHandler for ShellCommandHandler {
             exec_params,
             additional_permissions: params.additional_permissions.clone(),
             prefix_rule,
+            what: params.what.clone(),
+            why: params.why.clone(),
             session,
             turn,
             tracker,
@@ -305,6 +353,8 @@ impl ShellHandler {
             exec_params,
             additional_permissions,
             prefix_rule,
+            what,
+            why,
             session,
             turn,
             tracker,
@@ -373,6 +423,8 @@ impl ShellHandler {
             exec_params.cwd.clone(),
             source,
             freeform,
+            what.clone(),
+            why.clone(),
         );
         let event_ctx = ToolEventCtx::new(session.as_ref(), turn.as_ref(), &call_id, None);
         emitter.begin(event_ctx).await;
@@ -399,6 +451,8 @@ impl ShellHandler {
             sandbox_permissions: exec_params.sandbox_permissions,
             additional_permissions: normalized_additional_permissions,
             justification: exec_params.justification.clone(),
+            what,
+            why,
             exec_approval_requirement,
         };
         let mut orchestrator = ToolOrchestrator::new();
@@ -438,6 +492,8 @@ impl ShellHandler {
 
 #[cfg(test)]
 mod tests {
+    use super::ShellCommandHandler;
+    use super::validate_command_purpose;
     use std::path::PathBuf;
     use std::sync::Arc;
 
@@ -453,7 +509,6 @@ mod tests {
     use crate::shell::Shell;
     use crate::shell::ShellType;
     use crate::shell_snapshot::ShellSnapshot;
-    use crate::tools::handlers::ShellCommandHandler;
     use tokio::sync::watch;
 
     /// The logic for is_known_safe_command() has heuristics for known shells,
@@ -523,6 +578,8 @@ mod tests {
 
         let params = ShellCommandToolCallParams {
             command,
+            what: Some("print greeting text".to_string()),
+            why: Some("verify shell_command argument mapping".to_string()),
             workdir,
             login,
             timeout_ms,
@@ -583,6 +640,8 @@ mod tests {
         let (session, turn_context) = make_session_and_context().await;
         let params = ShellCommandToolCallParams {
             command: "echo hello".to_string(),
+            what: Some("print greeting text".to_string()),
+            why: Some("verify shell_command defaults".to_string()),
             workdir: None,
             login: None,
             timeout_ms: None,
@@ -616,6 +675,29 @@ mod tests {
             err.to_string()
                 .contains("login shell is disabled by config"),
             "unexpected error: {err}"
+        );
+    }
+
+    #[test]
+    fn command_purpose_requires_non_empty_what_and_why() {
+        assert!(
+            validate_command_purpose("shell", Some("list files"), Some("inspect repo")).is_ok()
+        );
+
+        let missing_what = validate_command_purpose("shell", None, Some("inspect repo"))
+            .expect_err("missing what should be rejected");
+        assert!(
+            missing_what
+                .to_string()
+                .contains("requires non-empty `what` and `why`")
+        );
+
+        let blank_why = validate_command_purpose("shell", Some("list files"), Some("  "))
+            .expect_err("blank why should be rejected");
+        assert!(
+            blank_why
+                .to_string()
+                .contains("requires non-empty `what` and `why`")
         );
     }
 }

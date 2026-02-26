@@ -32,4 +32,12 @@ source: ExecCommandSource,
 /**
  * Raw input sent to a unified exec session (if this is an interaction event).
  */
-interaction_input?: string, };
+interaction_input?: string, 
+/**
+ * High-level summary of what the command is doing.
+ */
+what?: string, 
+/**
+ * High-level reason for why the command is running.
+ */
+why?: string, };

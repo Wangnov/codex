@@ -65,6 +65,8 @@ async fn emit_js_repl_exec_begin(
         turn.cwd.clone(),
         ExecCommandSource::Agent,
         false,
+        None,
+        None,
     );
     let ctx = ToolEventCtx::new(session, turn, call_id, None);
     emitter.emit(ctx, ToolEventStage::Begin).await;
@@ -84,6 +86,8 @@ async fn emit_js_repl_exec_end(
         turn.cwd.clone(),
         ExecCommandSource::Agent,
         false,
+        None,
+        None,
     );
     let ctx = ToolEventCtx::new(session, turn, call_id, None);
     let stage = if error.is_some() {

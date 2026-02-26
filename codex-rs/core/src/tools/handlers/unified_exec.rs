@@ -32,6 +32,8 @@ pub struct UnifiedExecHandler;
 #[derive(Debug, Deserialize)]
 pub(crate) struct ExecCommandArgs {
     cmd: String,
+    what: String,
+    why: String,
     #[serde(default)]
     pub(crate) workdir: Option<String>,
     #[serde(default)]
@@ -78,6 +80,24 @@ fn default_tty() -> bool {
     false
 }
 
+fn has_non_empty_command_purpose(what: &str, why: &str) -> bool {
+    !what.trim().is_empty() && !why.trim().is_empty()
+}
+
+fn validate_command_purpose(
+    tool_name: &str,
+    what: &str,
+    why: &str,
+) -> Result<(), FunctionCallError> {
+    if has_non_empty_command_purpose(what, why) {
+        Ok(())
+    } else {
+        Err(FunctionCallError::RespondToModel(format!(
+            "`{tool_name}` requires non-empty `what` and `why` arguments."
+        )))
+    }
+}
+
 #[async_trait]
 impl ToolHandler for UnifiedExecHandler {
     fn kind(&self) -> ToolKind {
@@ -100,6 +120,9 @@ impl ToolHandler for UnifiedExecHandler {
         let Ok(params) = serde_json::from_str::<ExecCommandArgs>(arguments) else {
             return true;
         };
+        if !has_non_empty_command_purpose(&params.what, &params.why) {
+            return true;
+        }
         let command = match get_command(
             &params,
             invocation.session.user_shell(),
@@ -137,6 +160,7 @@ impl ToolHandler for UnifiedExecHandler {
         let response = match tool_name.as_str() {
             "exec_command" => {
                 let args: ExecCommandArgs = parse_arguments(&arguments)?;
+                validate_command_purpose(tool_name.as_str(), &args.what, &args.why)?;
                 maybe_emit_implicit_skill_invocation(
                     session.as_ref(),
                     turn.as_ref(),
@@ -153,6 +177,8 @@ impl ToolHandler for UnifiedExecHandler {
                 .map_err(FunctionCallError::RespondToModel)?;
 
                 let ExecCommandArgs {
+                    what,
+                    why,
                     workdir,
                     tty,
                     yield_time_ms,
@@ -229,6 +255,8 @@ impl ToolHandler for UnifiedExecHandler {
                             additional_permissions: normalized_additional_permissions,
                             justification,
                             prefix_rule,
+                            what: Some(what),
+                            why: Some(why),
                         },
                         &context,
                     )
@@ -341,7 +369,7 @@ mod tests {
 
     #[test]
     fn test_get_command_uses_default_shell_when_unspecified() -> anyhow::Result<()> {
-        let json = r#"{"cmd": "echo hello"}"#;
+        let json = r#"{"cmd":"echo hello","what":"print greeting text","why":"verify default shell behavior"}"#;
 
         let args: ExecCommandArgs = parse_arguments(json)?;
 
@@ -357,7 +385,7 @@ mod tests {
 
     #[test]
     fn test_get_command_respects_explicit_bash_shell() -> anyhow::Result<()> {
-        let json = r#"{"cmd": "echo hello", "shell": "/bin/bash"}"#;
+        let json = r#"{"cmd":"echo hello","what":"print greeting text","why":"verify explicit bash shell behavior","shell":"/bin/bash"}"#;
 
         let args: ExecCommandArgs = parse_arguments(json)?;
 
@@ -378,7 +406,7 @@ mod tests {
 
     #[test]
     fn test_get_command_respects_explicit_powershell_shell() -> anyhow::Result<()> {
-        let json = r#"{"cmd": "echo hello", "shell": "powershell"}"#;
+        let json = r#"{"cmd":"echo hello","what":"print greeting text","why":"verify explicit powershell shell behavior","shell":"powershell"}"#;
 
         let args: ExecCommandArgs = parse_arguments(json)?;
 
@@ -393,7 +421,7 @@ mod tests {
 
     #[test]
     fn test_get_command_respects_explicit_cmd_shell() -> anyhow::Result<()> {
-        let json = r#"{"cmd": "echo hello", "shell": "cmd"}"#;
+        let json = r#"{"cmd":"echo hello","what":"print greeting text","why":"verify explicit cmd shell behavior","shell":"cmd"}"#;
 
         let args: ExecCommandArgs = parse_arguments(json)?;
 
@@ -408,7 +436,7 @@ mod tests {
 
     #[test]
     fn test_get_command_rejects_explicit_login_when_disallowed() -> anyhow::Result<()> {
-        let json = r#"{"cmd": "echo hello", "login": true}"#;
+        let json = r#"{"cmd":"echo hello","what":"print greeting text","why":"verify disallowed login shell behavior","login":true}"#;
 
         let args: ExecCommandArgs = parse_arguments(json)?;
         let err = get_command(&args, Arc::new(default_user_shell()), false)
@@ -419,5 +447,46 @@ mod tests {
             "unexpected error: {err}"
         );
         Ok(())
+    }
+
+    #[test]
+    fn test_exec_command_requires_what_and_why() {
+        let json_missing_what = r#"{"cmd":"echo hello","why":"verify shell behavior"}"#;
+        let err_missing_what = parse_arguments::<ExecCommandArgs>(json_missing_what)
+            .expect_err("missing what should fail argument parsing");
+        assert!(
+            err_missing_what
+                .to_string()
+                .contains("missing field `what`")
+        );
+
+        let json_missing_why = r#"{"cmd":"echo hello","what":"print greeting text"}"#;
+        let err_missing_why = parse_arguments::<ExecCommandArgs>(json_missing_why)
+            .expect_err("missing why should fail argument parsing");
+        assert!(err_missing_why.to_string().contains("missing field `why`"));
+    }
+
+    #[test]
+    fn test_exec_command_rejects_blank_what_and_why() {
+        assert!(
+            validate_command_purpose("exec_command", "run test command", "verify behavior",)
+                .is_ok()
+        );
+
+        let blank_what = validate_command_purpose("exec_command", "  ", "verify behavior")
+            .expect_err("blank what should be rejected");
+        assert!(
+            blank_what
+                .to_string()
+                .contains("requires non-empty `what` and `why`")
+        );
+
+        let blank_why = validate_command_purpose("exec_command", "run test command", "  ")
+            .expect_err("blank why should be rejected");
+        assert!(
+            blank_why
+                .to_string()
+                .contains("requires non-empty `what` and `why`")
+        );
     }
 }

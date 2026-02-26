@@ -113,6 +113,8 @@ pub(crate) fn spawn_exit_watcher(
     process_id: String,
     transcript: Arc<Mutex<HeadTailBuffer>>,
     started_at: Instant,
+    what: Option<String>,
+    why: Option<String>,
 ) {
     let exit_token = process.cancellation_token();
     let output_drained = process.output_drained_notify();
@@ -134,6 +136,8 @@ pub(crate) fn spawn_exit_watcher(
             String::new(),
             exit_code,
             duration,
+            what,
+            why,
         )
         .await;
     });
@@ -186,6 +190,8 @@ pub(crate) async fn emit_exec_end_for_unified_exec(
     fallback_output: String,
     exit_code: i32,
     duration: Duration,
+    what: Option<String>,
+    why: Option<String>,
 ) {
     let aggregated_output = resolve_aggregated_output(&transcript, fallback_output).await;
     let output = ExecToolCallOutput {
@@ -202,6 +208,8 @@ pub(crate) async fn emit_exec_end_for_unified_exec(
         cwd,
         ExecCommandSource::UnifiedExecStartup,
         process_id,
+        what,
+        why,
     );
     emitter
         .emit(event_ctx, ToolEventStage::Success(output))

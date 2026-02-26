@@ -999,6 +999,8 @@ mod tests {
             vec![ParsedCommand::Unknown { cmd: "ls".into() }],
             ExecCommandSource::Agent,
             None,
+            None,
+            None,
             true,
         );
         exec_cell.complete_call(

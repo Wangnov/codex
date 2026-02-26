@@ -1434,6 +1434,20 @@
               ],
               "title": "ExecCommandBeginEventMsgType",
               "type": "string"
+            },
+            "what": {
+              "description": "High-level summary of what the command is doing.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "description": "High-level reason for why the command is running.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -1609,6 +1623,20 @@
               ],
               "title": "ExecCommandEndEventMsgType",
               "type": "string"
+            },
+            "what": {
+              "description": "High-level summary of what the command was doing.",
+              "type": [
+                "string",
+                "null"
+              ]
+            },
+            "why": {
+              "description": "High-level reason for why the command ran.",
+              "type": [
+                "string",
+                "null"
+              ]
             }
           },
           "required": [
@@ -6990,6 +7018,20 @@
           ],
           "title": "ExecCommandBeginEventMsgType",
           "type": "string"
+        },
+        "what": {
+          "description": "High-level summary of what the command is doing.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "description": "High-level reason for why the command is running.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [
@@ -7165,6 +7207,20 @@
           ],
           "title": "ExecCommandEndEventMsgType",
           "type": "string"
+        },
+        "what": {
+          "description": "High-level summary of what the command was doing.",
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "why": {
+          "description": "High-level reason for why the command ran.",
+          "type": [
+            "string",
+            "null"
+          ]
         }
       },
       "required": [
