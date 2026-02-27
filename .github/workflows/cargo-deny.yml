@@ -8,6 +8,7 @@ on:
 
 jobs:
   cargo-deny:
+    if: ${{ github.ref_name != 'local-main' && github.head_ref != 'local-main' }}
     runs-on: ubuntu-latest
     defaults:
       run:

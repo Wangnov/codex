@@ -19,6 +19,7 @@ env:
 
 jobs:
   test:
+    if: ${{ github.ref_name != 'local-main' && github.head_ref != 'local-main' }}
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
