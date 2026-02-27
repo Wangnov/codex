@@ -12,6 +12,7 @@ jobs:
   # --- Detect what changed to detect which tests to run (always runs) -------------------------------------
   changed:
     name: Detect changed areas
+    if: ${{ github.ref_name != 'local-main' && github.head_ref != 'local-main' }}
     runs-on: ubuntu-24.04
     outputs:
       codex: ${{ steps.detect.outputs.codex }}
