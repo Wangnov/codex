@@ -58,6 +58,7 @@ jobs:
         working-directory: codex-rs
     env:
       CARGO_PROFILE_RELEASE_LTO: ${{ contains(github.ref_name, '-alpha') && 'thin' || 'fat' }}
+      HAS_APPLE_SIGNING_SECRETS: ${{ secrets.APPLE_CERTIFICATE_P12 != '' && secrets.APPLE_CERTIFICATE_PASSWORD != '' && secrets.APPLE_NOTARIZATION_KEY_P8 != '' && secrets.APPLE_NOTARIZATION_KEY_ID != '' && secrets.APPLE_NOTARIZATION_ISSUER_ID != '' }}
 
     strategy:
       fail-fast: false
@@ -227,7 +228,7 @@ jobs:
           target: ${{ matrix.target }}
           artifacts-dir: ${{ github.workspace }}/codex-rs/target/${{ matrix.target }}/release
 
-      - if: ${{ runner.os == 'macOS' }}
+      - if: ${{ runner.os == 'macOS' && env.HAS_APPLE_SIGNING_SECRETS == 'true' }}
         name: MacOS code signing (binaries)
         uses: ./.github/actions/macos-code-sign
         with:
@@ -239,6 +240,12 @@ jobs:
           apple-notarization-key-p8: ${{ secrets.APPLE_NOTARIZATION_KEY_P8 }}
           apple-notarization-key-id: ${{ secrets.APPLE_NOTARIZATION_KEY_ID }}
           apple-notarization-issuer-id: ${{ secrets.APPLE_NOTARIZATION_ISSUER_ID }}
+
+      - if: ${{ runner.os == 'macOS' && env.HAS_APPLE_SIGNING_SECRETS != 'true' }}
+        name: Skip macOS binary signing (missing secrets)
+        shell: bash
+        run: |
+          echo "Skipping macOS binary signing because Apple signing secrets are not configured."
 
       - if: ${{ runner.os == 'macOS' }}
         name: Build macOS dmg
@@ -286,7 +293,7 @@ jobs:
             exit 1
           fi
 
-      - if: ${{ runner.os == 'macOS' }}
+      - if: ${{ runner.os == 'macOS' && env.HAS_APPLE_SIGNING_SECRETS == 'true' }}
         name: MacOS code signing (dmg)
         uses: ./.github/actions/macos-code-sign
         with:
@@ -298,6 +305,12 @@ jobs:
           apple-notarization-key-p8: ${{ secrets.APPLE_NOTARIZATION_KEY_P8 }}
           apple-notarization-key-id: ${{ secrets.APPLE_NOTARIZATION_KEY_ID }}
           apple-notarization-issuer-id: ${{ secrets.APPLE_NOTARIZATION_ISSUER_ID }}
+
+      - if: ${{ runner.os == 'macOS' && env.HAS_APPLE_SIGNING_SECRETS != 'true' }}
+        name: Skip macOS dmg signing (missing secrets)
+        shell: bash
+        run: |
+          echo "Skipping macOS dmg signing because Apple signing secrets are not configured."
 
       - name: Stage artifacts
         shell: bash
@@ -374,7 +387,7 @@ jobs:
     uses: ./.github/workflows/shell-tool-mcp.yml
     with:
       release-tag: ${{ github.ref_name }}
-      publish: true
+      publish: ${{ github.repository_owner == 'openai' || github.repository_owner == 'OpenAI' }}
     secrets: inherit
 
   release:
@@ -534,7 +547,7 @@ jobs:
   # npm docs: https://docs.npmjs.com/trusted-publishers
   publish-npm:
     # Publish to npm for stable releases and alpha pre-releases with numeric suffixes.
-    if: ${{ needs.release.outputs.should_publish_npm == 'true' }}
+    if: ${{ needs.release.outputs.should_publish_npm == 'true' && (github.repository_owner == 'openai' || github.repository_owner == 'OpenAI') }}
     name: publish-npm
     needs: release
     runs-on: ubuntu-latest
