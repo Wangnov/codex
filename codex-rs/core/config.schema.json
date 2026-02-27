@@ -2064,6 +2064,10 @@
         "set": null
       }
     },
+    "shnote": {
+      "description": "Whether shell tools require non-empty `what` and `why` fields.\n\nDefaults to `true`.",
+      "type": "boolean"
+    },
     "show_raw_agent_reasoning": {
       "description": "When set to `true`, `AgentReasoningRawContentEvent` events will be shown in the UI/output. Defaults to `false`.",
       "type": "boolean"

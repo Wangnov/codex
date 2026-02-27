@@ -32,8 +32,8 @@ pub struct UnifiedExecHandler;
 #[derive(Debug, Deserialize)]
 pub(crate) struct ExecCommandArgs {
     cmd: String,
-    what: String,
-    why: String,
+    what: Option<String>,
+    why: Option<String>,
     #[serde(default)]
     pub(crate) workdir: Option<String>,
     #[serde(default)]
@@ -80,16 +80,18 @@ fn default_tty() -> bool {
     false
 }
 
-fn has_non_empty_command_purpose(what: &str, why: &str) -> bool {
-    !what.trim().is_empty() && !why.trim().is_empty()
+fn has_non_empty_command_purpose(what: Option<&str>, why: Option<&str>) -> bool {
+    what.is_some_and(|value| !value.trim().is_empty())
+        && why.is_some_and(|value| !value.trim().is_empty())
 }
 
 fn validate_command_purpose(
     tool_name: &str,
-    what: &str,
-    why: &str,
+    require_command_purpose: bool,
+    what: Option<&str>,
+    why: Option<&str>,
 ) -> Result<(), FunctionCallError> {
-    if has_non_empty_command_purpose(what, why) {
+    if !require_command_purpose || has_non_empty_command_purpose(what, why) {
         Ok(())
     } else {
         Err(FunctionCallError::RespondToModel(format!(
@@ -120,7 +122,9 @@ impl ToolHandler for UnifiedExecHandler {
         let Ok(params) = serde_json::from_str::<ExecCommandArgs>(arguments) else {
             return true;
         };
-        if !has_non_empty_command_purpose(&params.what, &params.why) {
+        if invocation.turn.tools_config.require_command_purpose
+            && !has_non_empty_command_purpose(params.what.as_deref(), params.why.as_deref())
+        {
             return true;
         }
         let command = match get_command(
@@ -160,7 +164,12 @@ impl ToolHandler for UnifiedExecHandler {
         let response = match tool_name.as_str() {
             "exec_command" => {
                 let args: ExecCommandArgs = parse_arguments(&arguments)?;
-                validate_command_purpose(tool_name.as_str(), &args.what, &args.why)?;
+                validate_command_purpose(
+                    tool_name.as_str(),
+                    turn.tools_config.require_command_purpose,
+                    args.what.as_deref(),
+                    args.why.as_deref(),
+                )?;
                 maybe_emit_implicit_skill_invocation(
                     session.as_ref(),
                     turn.as_ref(),
@@ -255,8 +264,8 @@ impl ToolHandler for UnifiedExecHandler {
                             additional_permissions: normalized_additional_permissions,
                             justification,
                             prefix_rule,
-                            what: Some(what),
-                            why: Some(why),
+                            what,
+                            why,
                         },
                         &context,
                     )
@@ -450,43 +459,52 @@ mod tests {
     }
 
     #[test]
-    fn test_exec_command_requires_what_and_why() {
-        let json_missing_what = r#"{"cmd":"echo hello","why":"verify shell behavior"}"#;
-        let err_missing_what = parse_arguments::<ExecCommandArgs>(json_missing_what)
-            .expect_err("missing what should fail argument parsing");
-        assert!(
-            err_missing_what
-                .to_string()
-                .contains("missing field `what`")
-        );
+    fn test_exec_command_allows_missing_what_and_why_arguments() -> anyhow::Result<()> {
+        let args_without_what: ExecCommandArgs =
+            parse_arguments(r#"{"cmd":"echo hello","why":"verify shell behavior"}"#)?;
+        assert_eq!(args_without_what.what, None);
 
-        let json_missing_why = r#"{"cmd":"echo hello","what":"print greeting text"}"#;
-        let err_missing_why = parse_arguments::<ExecCommandArgs>(json_missing_why)
-            .expect_err("missing why should fail argument parsing");
-        assert!(err_missing_why.to_string().contains("missing field `why`"));
+        let args_without_why: ExecCommandArgs =
+            parse_arguments(r#"{"cmd":"echo hello","what":"print greeting text"}"#)?;
+        assert_eq!(args_without_why.why, None);
+
+        let args_without_purpose: ExecCommandArgs = parse_arguments(r#"{"cmd":"echo hello"}"#)?;
+        assert_eq!(args_without_purpose.what, None);
+        assert_eq!(args_without_purpose.why, None);
+
+        Ok(())
     }
 
     #[test]
     fn test_exec_command_rejects_blank_what_and_why() {
         assert!(
-            validate_command_purpose("exec_command", "run test command", "verify behavior",)
-                .is_ok()
+            validate_command_purpose(
+                "exec_command",
+                true,
+                Some("run test command"),
+                Some("verify behavior"),
+            )
+            .is_ok()
         );
 
-        let blank_what = validate_command_purpose("exec_command", "  ", "verify behavior")
-            .expect_err("blank what should be rejected");
+        let blank_what =
+            validate_command_purpose("exec_command", true, Some("  "), Some("verify behavior"))
+                .expect_err("blank what should be rejected");
         assert!(
             blank_what
                 .to_string()
                 .contains("requires non-empty `what` and `why`")
         );
 
-        let blank_why = validate_command_purpose("exec_command", "run test command", "  ")
-            .expect_err("blank why should be rejected");
+        let blank_why =
+            validate_command_purpose("exec_command", true, Some("run test command"), Some("  "))
+                .expect_err("blank why should be rejected");
         assert!(
             blank_why
                 .to_string()
                 .contains("requires non-empty `what` and `why`")
         );
+
+        assert!(validate_command_purpose("exec_command", false, None, None).is_ok());
     }
 }

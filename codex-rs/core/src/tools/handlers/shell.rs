@@ -67,10 +67,11 @@ fn has_non_empty_command_purpose(what: Option<&str>, why: Option<&str>) -> bool 
 
 fn validate_command_purpose(
     tool_name: &str,
+    require_command_purpose: bool,
     what: Option<&str>,
     why: Option<&str>,
 ) -> Result<(), FunctionCallError> {
-    if has_non_empty_command_purpose(what, why) {
+    if !require_command_purpose || has_non_empty_command_purpose(what, why) {
         Ok(())
     } else {
         Err(FunctionCallError::RespondToModel(format!(
@@ -177,10 +178,12 @@ impl ToolHandler for ShellHandler {
             ToolPayload::Function { arguments } => {
                 serde_json::from_str::<ShellToolCallParams>(arguments)
                     .map(|params| {
-                        if !has_non_empty_command_purpose(
-                            params.what.as_deref(),
-                            params.why.as_deref(),
-                        ) {
+                        if invocation.turn.tools_config.require_command_purpose
+                            && !has_non_empty_command_purpose(
+                                params.what.as_deref(),
+                                params.why.as_deref(),
+                            )
+                        {
                             return true;
                         }
                         !is_known_safe_command(&params.command)
@@ -208,6 +211,7 @@ impl ToolHandler for ShellHandler {
                 let params: ShellToolCallParams = parse_arguments(&arguments)?;
                 validate_command_purpose(
                     tool_name.as_str(),
+                    turn.tools_config.require_command_purpose,
                     params.what.as_deref(),
                     params.why.as_deref(),
                 )?;
@@ -273,7 +277,9 @@ impl ToolHandler for ShellCommandHandler {
 
         serde_json::from_str::<ShellCommandToolCallParams>(arguments)
             .map(|params| {
-                if !has_non_empty_command_purpose(params.what.as_deref(), params.why.as_deref()) {
+                if invocation.turn.tools_config.require_command_purpose
+                    && !has_non_empty_command_purpose(params.what.as_deref(), params.why.as_deref())
+                {
                     return true;
                 }
                 let use_login_shell = match Self::resolve_use_login_shell(
@@ -310,6 +316,7 @@ impl ToolHandler for ShellCommandHandler {
         let params: ShellCommandToolCallParams = parse_arguments(&arguments)?;
         validate_command_purpose(
             tool_name.as_str(),
+            turn.tools_config.require_command_purpose,
             params.what.as_deref(),
             params.why.as_deref(),
         )?;
@@ -681,10 +688,11 @@ mod tests {
     #[test]
     fn command_purpose_requires_non_empty_what_and_why() {
         assert!(
-            validate_command_purpose("shell", Some("list files"), Some("inspect repo")).is_ok()
+            validate_command_purpose("shell", true, Some("list files"), Some("inspect repo"))
+                .is_ok()
         );
 
-        let missing_what = validate_command_purpose("shell", None, Some("inspect repo"))
+        let missing_what = validate_command_purpose("shell", true, None, Some("inspect repo"))
             .expect_err("missing what should be rejected");
         assert!(
             missing_what
@@ -692,12 +700,14 @@ mod tests {
                 .contains("requires non-empty `what` and `why`")
         );
 
-        let blank_why = validate_command_purpose("shell", Some("list files"), Some("  "))
+        let blank_why = validate_command_purpose("shell", true, Some("list files"), Some("  "))
             .expect_err("blank why should be rejected");
         assert!(
             blank_why
                 .to_string()
                 .contains("requires non-empty `what` and `why`")
         );
+
+        assert!(validate_command_purpose("shell", false, None, None).is_ok());
     }
 }
