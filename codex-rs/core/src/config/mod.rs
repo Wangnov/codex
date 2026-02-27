@@ -204,6 +204,11 @@ pub struct Config {
     /// Effective permission configuration for shell tool execution.
     pub permissions: Permissions,
 
+    /// Whether shell tools require non-empty `what` and `why` fields.
+    ///
+    /// Defaults to `true`.
+    pub shnote: bool,
+
     /// enforce_residency means web traffic cannot be routed outside of a
     /// particular geography. HTTP clients should direct their requests
     /// using backend-specific headers or URLs to enforce this.
@@ -1025,6 +1030,11 @@ pub struct ConfigToml {
     /// shell.
     pub allow_login_shell: Option<bool>,
 
+    /// Whether shell tools require non-empty `what` and `why` fields.
+    ///
+    /// Defaults to `true`.
+    pub shnote: Option<bool>,
+
     /// Sandbox mode to use.
     pub sandbox_mode: Option<SandboxMode>,
 
@@ -1818,6 +1828,7 @@ impl Config {
 
         let shell_environment_policy = cfg.shell_environment_policy.into();
         let allow_login_shell = cfg.allow_login_shell.unwrap_or(true);
+        let shnote = cfg.shnote.unwrap_or(true);
 
         let history = cfg.history.unwrap_or_default();
 
@@ -2093,6 +2104,7 @@ impl Config {
                 windows_sandbox_mode,
                 macos_seatbelt_profile_extensions: None,
             },
+            shnote,
             enforce_residency: enforce_residency.value,
             did_user_set_custom_approval_policy_or_sandbox_mode,
             notify: cfg.notify,
@@ -4750,6 +4762,7 @@ model_verbosity = "high"
                     windows_sandbox_mode: None,
                     macos_seatbelt_profile_extensions: None,
                 },
+                shnote: true,
                 enforce_residency: Constrained::allow_any(None),
                 did_user_set_custom_approval_policy_or_sandbox_mode: true,
                 user_instructions: None,
@@ -4877,6 +4890,7 @@ model_verbosity = "high"
                 windows_sandbox_mode: None,
                 macos_seatbelt_profile_extensions: None,
             },
+            shnote: true,
             enforce_residency: Constrained::allow_any(None),
             did_user_set_custom_approval_policy_or_sandbox_mode: true,
             user_instructions: None,
@@ -5002,6 +5016,7 @@ model_verbosity = "high"
                 windows_sandbox_mode: None,
                 macos_seatbelt_profile_extensions: None,
             },
+            shnote: true,
             enforce_residency: Constrained::allow_any(None),
             did_user_set_custom_approval_policy_or_sandbox_mode: true,
             user_instructions: None,
@@ -5113,6 +5128,7 @@ model_verbosity = "high"
                 windows_sandbox_mode: None,
                 macos_seatbelt_profile_extensions: None,
             },
+            shnote: true,
             enforce_residency: Constrained::allow_any(None),
             did_user_set_custom_approval_policy_or_sandbox_mode: true,
             user_instructions: None,
@@ -5709,6 +5725,40 @@ allow_login_shell = false
         )?;
 
         assert!(!config.permissions.allow_login_shell);
+        Ok(())
+    }
+
+    #[test]
+    fn config_defaults_shnote_to_true() -> std::io::Result<()> {
+        let codex_home = TempDir::new()?;
+        let config = Config::load_from_base_config_with_overrides(
+            ConfigToml::default(),
+            ConfigOverrides::default(),
+            codex_home.path().to_path_buf(),
+        )?;
+
+        assert!(config.shnote);
+        Ok(())
+    }
+
+    #[test]
+    fn config_loads_shnote_from_toml() -> std::io::Result<()> {
+        let codex_home = TempDir::new()?;
+        let cfg: ConfigToml = toml::from_str(
+            r#"
+model = "gpt-5.1"
+shnote = false
+"#,
+        )
+        .expect("TOML deserialization should succeed for shnote");
+
+        let config = Config::load_from_base_config_with_overrides(
+            cfg,
+            ConfigOverrides::default(),
+            codex_home.path().to_path_buf(),
+        )?;
+
+        assert!(!config.shnote);
         Ok(())
     }
 

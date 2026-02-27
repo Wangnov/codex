@@ -2343,7 +2343,11 @@ mod tests {
                     code: format!(
                         r#"
 const marker = {marker_json};
-void codex.tool("shell_command", {{ command: `sleep 0.35; printf js_repl_unawaited_done > "${{marker}}"` }});
+void codex.tool("shell_command", {{
+  command: `sleep 0.35; printf js_repl_unawaited_done > "${{marker}}"`,
+  what: "write marker file",
+  why: "verify js_repl waits for unawaited tool calls"
+}});
 console.log("cell-complete");
 "#
                     ),

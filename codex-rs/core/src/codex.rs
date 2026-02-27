@@ -667,6 +667,7 @@ impl TurnContext {
             session_source: self.session_source.clone(),
         })
         .with_allow_login_shell(self.tools_config.allow_login_shell)
+        .with_require_command_purpose(self.tools_config.require_command_purpose)
         .with_agent_roles(config.agent_roles.clone());
 
         Self {
@@ -1023,6 +1024,7 @@ impl Session {
             session_source: session_source.clone(),
         })
         .with_allow_login_shell(per_turn_config.permissions.allow_login_shell)
+        .with_require_command_purpose(per_turn_config.shnote)
         .with_agent_roles(per_turn_config.agent_roles.clone());
 
         let cwd = session_configuration.cwd.clone();
@@ -4638,6 +4640,7 @@ async fn spawn_review_thread(
         session_source: parent_turn_context.session_source.clone(),
     })
     .with_allow_login_shell(config.permissions.allow_login_shell)
+    .with_require_command_purpose(config.shnote)
     .with_agent_roles(config.agent_roles.clone());
 
     let review_prompt = resolved.prompt.clone();

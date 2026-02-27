@@ -24,6 +24,12 @@ Codex can run a notification hook when the agent finishes a turn. See the config
 
 - https://developers.openai.com/codex/config-reference
 
+## shnote
+
+Set `shnote = false` in `~/.codex/config.toml` to disable `what`/`why` requirements for
+shell-style tools (`shell`, `shell_command`, and `exec_command`).
+The default is `true`, which keeps `what` and `why` required and non-empty.
+
 ## JSON Schema
 
 The generated JSON Schema for `config.toml` lives at `codex-rs/core/config.schema.json`.

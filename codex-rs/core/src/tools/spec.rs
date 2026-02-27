@@ -47,6 +47,7 @@ pub(crate) struct ToolsConfig {
     pub shell_type: ConfigShellToolType,
     shell_command_backend: ShellCommandBackendConfig,
     pub allow_login_shell: bool,
+    pub require_command_purpose: bool,
     pub apply_patch_tool_type: Option<ApplyPatchToolType>,
     pub web_search_mode: Option<WebSearchMode>,
     pub agent_roles: BTreeMap<String, AgentRoleConfig>,
@@ -131,6 +132,7 @@ impl ToolsConfig {
             shell_type,
             shell_command_backend,
             allow_login_shell: true,
+            require_command_purpose: true,
             apply_patch_tool_type,
             web_search_mode: *web_search_mode,
             agent_roles: BTreeMap::new(),
@@ -153,6 +155,11 @@ impl ToolsConfig {
 
     pub fn with_allow_login_shell(mut self, allow_login_shell: bool) -> Self {
         self.allow_login_shell = allow_login_shell;
+        self
+    }
+
+    pub fn with_require_command_purpose(mut self, require_command_purpose: bool) -> Self {
+        self.require_command_purpose = require_command_purpose;
         self
     }
 }
@@ -296,7 +303,11 @@ fn create_approval_parameters(request_permission_enabled: bool) -> BTreeMap<Stri
     properties
 }
 
-fn create_exec_command_tool(allow_login_shell: bool, request_permission_enabled: bool) -> ToolSpec {
+fn create_exec_command_tool(
+    allow_login_shell: bool,
+    request_permission_enabled: bool,
+    require_command_purpose: bool,
+) -> ToolSpec {
     let mut properties = BTreeMap::from([
         (
             "cmd".to_string(),
@@ -374,6 +385,12 @@ fn create_exec_command_tool(allow_login_shell: bool, request_permission_enabled:
     }
     properties.extend(create_approval_parameters(request_permission_enabled));
 
+    let mut required = vec!["cmd".to_string()];
+    if require_command_purpose {
+        required.push("what".to_string());
+        required.push("why".to_string());
+    }
+
     ToolSpec::Function(ResponsesApiTool {
         name: "exec_command".to_string(),
         description:
@@ -382,11 +399,7 @@ fn create_exec_command_tool(allow_login_shell: bool, request_permission_enabled:
         strict: false,
         parameters: JsonSchema::Object {
             properties,
-            required: Some(vec![
-                "cmd".to_string(),
-                "what".to_string(),
-                "why".to_string(),
-            ]),
+            required: Some(required),
             additional_properties: Some(false.into()),
         },
     })
@@ -439,7 +452,7 @@ fn create_write_stdin_tool() -> ToolSpec {
     })
 }
 
-fn create_shell_tool(request_permission_enabled: bool) -> ToolSpec {
+fn create_shell_tool(request_permission_enabled: bool, require_command_purpose: bool) -> ToolSpec {
     let mut properties = BTreeMap::from([
         (
             "command".to_string(),
@@ -496,17 +509,19 @@ Examples of valid command strings:
 - Always set the `workdir` param when using the shell function. Do not use `cd` unless absolutely necessary."#
     }.to_string();
 
+    let mut required = vec!["command".to_string()];
+    if require_command_purpose {
+        required.push("what".to_string());
+        required.push("why".to_string());
+    }
+
     ToolSpec::Function(ResponsesApiTool {
         name: "shell".to_string(),
         description,
         strict: false,
         parameters: JsonSchema::Object {
             properties,
-            required: Some(vec![
-                "command".to_string(),
-                "what".to_string(),
-                "why".to_string(),
-            ]),
+            required: Some(required),
             additional_properties: Some(false.into()),
         },
     })
@@ -515,6 +530,7 @@ Examples of valid command strings:
 fn create_shell_command_tool(
     allow_login_shell: bool,
     request_permission_enabled: bool,
+    require_command_purpose: bool,
 ) -> ToolSpec {
     let mut properties = BTreeMap::from([
         (
@@ -583,17 +599,19 @@ Examples of valid command strings:
 - Always set the `workdir` param when using the shell_command function. Do not use `cd` unless absolutely necessary."#
     }.to_string();
 
+    let mut required = vec!["command".to_string()];
+    if require_command_purpose {
+        required.push("what".to_string());
+        required.push("why".to_string());
+    }
+
     ToolSpec::Function(ResponsesApiTool {
         name: "shell_command".to_string(),
         description,
         strict: false,
         parameters: JsonSchema::Object {
             properties,
-            required: Some(vec![
-                "command".to_string(),
-                "what".to_string(),
-                "why".to_string(),
-            ]),
+            required: Some(required),
             additional_properties: Some(false.into()),
         },
     })
@@ -1750,7 +1768,7 @@ pub(crate) fn build_specs(
     match &config.shell_type {
         ConfigShellToolType::Default => {
             builder.push_spec_with_parallel_support(
-                create_shell_tool(request_permission_enabled),
+                create_shell_tool(request_permission_enabled, config.require_command_purpose),
                 true,
             );
         }
@@ -1759,7 +1777,11 @@ pub(crate) fn build_specs(
         }
         ConfigShellToolType::UnifiedExec => {
             builder.push_spec_with_parallel_support(
-                create_exec_command_tool(config.allow_login_shell, request_permission_enabled),
+                create_exec_command_tool(
+                    config.allow_login_shell,
+                    request_permission_enabled,
+                    config.require_command_purpose,
+                ),
                 true,
             );
             builder.push_spec(create_write_stdin_tool());
@@ -1771,7 +1793,11 @@ pub(crate) fn build_specs(
         }
         ConfigShellToolType::ShellCommand => {
             builder.push_spec_with_parallel_support(
-                create_shell_command_tool(config.allow_login_shell, request_permission_enabled),
+                create_shell_command_tool(
+                    config.allow_login_shell,
+                    request_permission_enabled,
+                    config.require_command_purpose,
+                ),
                 true,
             );
         }
@@ -2128,7 +2154,7 @@ mod tests {
         // Build expected from the same helpers used by the builder.
         let mut expected: BTreeMap<String, ToolSpec> = BTreeMap::from([]);
         for spec in [
-            create_exec_command_tool(true, false),
+            create_exec_command_tool(true, false, true),
             create_write_stdin_tool(),
             PLAN_TOOL.clone(),
             create_request_user_input_tool(CollaborationModesConfig::default()),
@@ -3142,7 +3168,7 @@ mod tests {
 
     #[test]
     fn test_exec_command_tool_requires_what_why() {
-        let tool = super::create_exec_command_tool(true, false);
+        let tool = super::create_exec_command_tool(true, false, true);
         let ToolSpec::Function(ResponsesApiTool {
             parameters:
                 JsonSchema::Object {
@@ -3162,8 +3188,26 @@ mod tests {
     }
 
     #[test]
+    fn test_exec_command_tool_does_not_require_what_why_when_shnote_disabled() {
+        let tool = super::create_exec_command_tool(true, false, false);
+        let ToolSpec::Function(ResponsesApiTool {
+            parameters:
+                JsonSchema::Object {
+                    required: Some(required),
+                    ..
+                },
+            ..
+        }) = &tool
+        else {
+            panic!("expected function tool");
+        };
+
+        assert_eq!(required, &vec!["cmd".to_string()]);
+    }
+
+    #[test]
     fn test_shell_tool() {
-        let tool = super::create_shell_tool(false);
+        let tool = super::create_shell_tool(false, true);
         let ToolSpec::Function(ResponsesApiTool {
             description, name, ..
         }) = &tool
@@ -3208,8 +3252,25 @@ Examples of valid command strings:
     }
 
     #[test]
+    fn test_shell_tool_does_not_require_what_why_when_shnote_disabled() {
+        let tool = super::create_shell_tool(false, false);
+        let ToolSpec::Function(ResponsesApiTool {
+            parameters:
+                JsonSchema::Object {
+                    required: Some(required),
+                    ..
+                },
+            ..
+        }) = &tool
+        else {
+            panic!("expected function tool");
+        };
+        assert_eq!(required, &vec!["command".to_string()]);
+    }
+
+    #[test]
     fn shell_tool_with_request_permission_includes_additional_permissions() {
-        let tool = super::create_shell_tool(true);
+        let tool = super::create_shell_tool(true, true);
         let ToolSpec::Function(ResponsesApiTool { parameters, .. }) = tool else {
             panic!("expected function tool");
         };
@@ -3230,7 +3291,7 @@ Examples of valid command strings:
 
     #[test]
     fn test_shell_command_tool() {
-        let tool = super::create_shell_command_tool(true, false);
+        let tool = super::create_shell_command_tool(true, false, true);
         let ToolSpec::Function(ResponsesApiTool {
             description, name, ..
         }) = &tool
@@ -3271,6 +3332,23 @@ Examples of valid command strings:
             required,
             &vec!["command".to_string(), "what".to_string(), "why".to_string()]
         );
+    }
+
+    #[test]
+    fn test_shell_command_tool_does_not_require_what_why_when_shnote_disabled() {
+        let tool = super::create_shell_command_tool(true, false, false);
+        let ToolSpec::Function(ResponsesApiTool {
+            parameters:
+                JsonSchema::Object {
+                    required: Some(required),
+                    ..
+                },
+            ..
+        }) = &tool
+        else {
+            panic!("expected function tool");
+        };
+        assert_eq!(required, &vec!["command".to_string()]);
     }
 
     #[test]
