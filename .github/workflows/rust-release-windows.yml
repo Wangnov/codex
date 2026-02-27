@@ -32,6 +32,7 @@ jobs:
         working-directory: codex-rs
     env:
       CARGO_PROFILE_RELEASE_LTO: ${{ inputs.release-lto }}
+      HAS_AZURE_TRUSTED_SIGNING_SECRETS: ${{ secrets.AZURE_TRUSTED_SIGNING_CLIENT_ID != '' && secrets.AZURE_TRUSTED_SIGNING_TENANT_ID != '' && secrets.AZURE_TRUSTED_SIGNING_SUBSCRIPTION_ID != '' && secrets.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME != '' && secrets.AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME != '' }}
 
     strategy:
       fail-fast: false
@@ -159,7 +160,7 @@ jobs:
           ls -lh target/${{ matrix.target }}/release/codex-command-runner.exe
 
       - name: Sign Windows binaries with Azure Trusted Signing
-        if: ${{ secrets.AZURE_TRUSTED_SIGNING_CLIENT_ID != '' && secrets.AZURE_TRUSTED_SIGNING_TENANT_ID != '' && secrets.AZURE_TRUSTED_SIGNING_SUBSCRIPTION_ID != '' && secrets.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME != '' && secrets.AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME != '' }}
+        if: ${{ env.HAS_AZURE_TRUSTED_SIGNING_SECRETS == 'true' }}
         uses: ./.github/actions/windows-code-sign
         with:
           target: ${{ matrix.target }}
@@ -171,7 +172,7 @@ jobs:
           certificate-profile-name: ${{ secrets.AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME }}
 
       - name: Skip signing notice
-        if: ${{ !(secrets.AZURE_TRUSTED_SIGNING_CLIENT_ID != '' && secrets.AZURE_TRUSTED_SIGNING_TENANT_ID != '' && secrets.AZURE_TRUSTED_SIGNING_SUBSCRIPTION_ID != '' && secrets.AZURE_TRUSTED_SIGNING_ENDPOINT != '' && secrets.AZURE_TRUSTED_SIGNING_ACCOUNT_NAME != '' && secrets.AZURE_TRUSTED_SIGNING_CERTIFICATE_PROFILE_NAME != '') }}
+        if: ${{ env.HAS_AZURE_TRUSTED_SIGNING_SECRETS != 'true' }}
         shell: bash
         run: |
           echo "Azure Trusted Signing secrets are missing. Skipping Windows code signing for this run."
